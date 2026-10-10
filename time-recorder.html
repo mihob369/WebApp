@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>タイム計測ツール</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .sticky-header {
+      background: #ffffff;
+      padding: 15px 20px 5px 20px;
+      border-bottom: 2px solid #0078d4;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .header-top h2 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: #333;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sheet-select {
+      padding: 6px 10px;
+      font-size: 0.95em;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background: #f8f9fa;
+      font-weight: bold;
+    }
+
+    .header-title-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 5px;
+    }
+
+    .header-title-bar h3 {
+      margin: 0;
+      color: #555;
+    }
+
+    .table-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 20px 20px 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+      background: white;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #f0f0f0;
+      z-index: 5;
+      box-shadow: 0 1px 0 #ccc;
+    }
+
+    button { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn-add { background: #0078d4; color: white; font-size: 0.95em; }
+    .btn-start { background: #28a745; color: white; }
+    .btn-stop { background: #dc3545; color: white; }
+    .btn-move { background: #17a2b8; color: white; padding: 4px 8px; font-size: 0.85em; }
+    .btn-edit { background: #ffc107; color: #333; padding: 4px 8px; font-size: 0.85em; }
+    .btn-del { background: #6c757d; color: white; padding: 4px 8px; font-size: 0.85em; }
+    .btn-reset { background: #dc3545; color: white; padding: 6px 10px; font-size: 0.85em; white-space: nowrap; }
+    .btn-save { background: #0078d4; color: white; }
+    .btn-cancel { background: #6c757d; color: white; }
+    .btn-direct { background: #28a745; color: white; font-size: 0.85em; text-decoration: none; display: inline-block; padding: 6px 12px; border-radius: 4px; }
+    button:disabled { background: #ccc !important; cursor: not-allowed; opacity: 0.6; }
+
+    tr.in-progress { background-color: #e6f4ea; }
+    .status-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; font-weight: bold; }
+    .badge-progress { background: #28a745; color: white; }
+    .live-time { color: #28a745; font-weight: bold; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0.6; } }
+
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center;
+      z-index: 100;
+    }
+    .modal-content {
+      background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .modal-group { margin-bottom: 12px; }
+    .modal-group label { display: block; font-weight: bold; margin-bottom: 4px; }
+    .input-with-reset { display: flex; gap: 6px; align-items: center; }
+    .input-with-reset input { flex-grow: 1; padding: 8px; }
+    textarea.bulk-input { width: 100%; height: 160px; padding: 8px; box-sizing: border-box; resize: vertical; }
+    .modal-buttons { text-align: right; margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px; }
+
+    .loading-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(255, 255, 255, 0.7);
+      z-index: 200; justify-content: center; align-items: center; flex-direction: column;
+    }
+    .spinner {
+      width: 48px; height: 48px; border: 5px solid #0078d4; border-bottom-color: transparent;
+      border-radius: 50%; display: inline-block; box-sizing: border-box;
+      animation: rotation 1s linear infinite;
+    }
+    @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loading-text { margin-top: 12px; font-weight: bold; color: #0078d4; font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text">処理中...</div>
+  </div>
+
+  <div class="sticky-header">
+    <div class="header-top">
+      <h2 id="appTitle">タイム計測ツール</h2>
+      <div class="header-controls">
+        <label style="font-weight: bold; font-size: 0.9em;">シート選択:</label>
+        <select id="sheetSelect" class="sheet-select" onchange="onSheetChange()"></select>
+        <a id="directEditBtn" href="#" target="_blank" class="btn-direct">直接編集</a>
+      </div>
+    </div>
+    <div class="header-title-bar">
+      <h3>プログラム一覧</h3>
+      <button class="btn-add" onclick="openAddModal()">＋ プログラム追加</button>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 22%;">プログラム</th>
+          <th style="width: 11%;">開始時刻</th>
+          <th style="width: 11%;">終了時刻</th>
+          <th style="width: 11%;">所要時間</th>
+          <th style="width: 17%;">備考</th>
+          <th style="width: 12%;">計測操作</th>
+          <th style="width: 16%;">管理</th>
+        </tr>
+      </thead>
+      <tbody id="programTableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- 複数行追加用モーダル -->
+  <div id="addModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3>プログラム追加（複数行入力可）</h3>
+      <p style="font-size: 0.85em; color: #666; margin-top: -5px;">1行につき1つのプログラム名を入力してください。</p>
+      <div class="modal-group">
+        <textarea id="bulkProgramNames" class="bulk-input" placeholder="例:&#10;100m走 1年男子&#10;玉入れ 全体&#10;色別対抗リレー"></textarea>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-cancel" onclick="closeAddModal()">キャンセル</button>
+        <button class="btn-save" onclick="saveBulkPrograms()">追加する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手入力直接編集用モーダル -->
+  <div id="editModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3>編集・手入力修正</h3>
+      <input type="hidden" id="editId">
+      
+      <div class="modal-group">
+        <label>プログラム名</label>
+        <div class="input-with-reset">
+          <input type="text" id="editEventName">
+          <button type="button" class="btn-reset" onclick="resetField('editEventName')">リセット</button>
+        </div>
+      </div>
+      <div class="modal-group">
+        <label>開始時刻 (例: 09:30:00)</label>
+        <div class="input-with-reset">
+          <input type="text" id="editStartTime" placeholder="HH:mm:ss">
+          <button type="button" class="btn-reset" onclick="resetField('editStartTime')">リセット</button>
+        </div>
+      </div>
+      <div class="modal-group">
+        <label>終了時刻 (例: 09:32:15)</label>
+        <div class="input-with-reset">
+          <input type="text" id="editEndTime" placeholder="HH:mm:ss">
+          <button type="button" class="btn-reset" onclick="resetField('editEndTime')">リセット</button>
+        </div>
+      </div>
+      <div class="modal-group">
+        <label>備考</label>
+        <div class="input-with-reset">
+          <input type="text" id="editNote" placeholder="メモ・注意事項など">
+          <button type="button" class="btn-reset" onclick="resetField('editNote')">リセット</button>
+        </div>
+      </div>
+      
+      <div class="modal-buttons">
+        <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+        <button class="btn-save" onclick="saveManualEdit()">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ⚠️ デプロイしたGASのWebアプリURLを設定してください
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbymcm2Zj9SI6kfYkIeqazBpXCkSCDJrCryDEe4AO4ilf1amWKTRb1YqBuEj8ygw615LDw/exec";
+
+    let timerInterval = null;
+    let autoSyncInterval = null; // ★❹ 自動再取得タイマー
+    let isUserOperating = false;  // ★❹ ユーザー操作中フラグ
+    let currentList = [];
+    let currentSheetName = "";
+
+    function showLoading() {
+      document.getElementById('loadingOverlay').style.display = 'flex';
+    }
+
+    function hideLoading() {
+      document.getElementById('loadingOverlay').style.display = 'none';
+    }
+
+    function updateTitle(sheetName) {
+      const fullTitle = `${sheetName}計測ツール`;
+      document.title = fullTitle;
+      document.getElementById('appTitle').innerText = fullTitle;
+    }
+
+// 初期化：シート一覧およびスプレッドシートURLの取得
+    async function initApp() {
+      showLoading();
+      try {
+        const res = await fetch(`${GAS_WEB_APP_URL}?action=getSheets`);
+        if (res.ok) {
+          const data = await res.json();
+          const select = document.getElementById('sheetSelect');
+          select.innerHTML = '';
+          
+          if (data.spreadsheetUrl) {
+            document.getElementById('directEditBtn').href = data.spreadsheetUrl;
+          }
+
+          if (data.sheets && data.sheets.length > 0) {
+            data.sheets.forEach(name => {
+              const opt = document.createElement('option');
+              opt.value = name;
+              opt.textContent = name;
+              select.appendChild(opt);
+            });
+
+            // ★前回選択していたシート名をローカルストレージから取得
+            const savedSheet = localStorage.getItem('selectedSheetName');
+            
+            // 保存されたシートが存在すればそれを選択、なければ一番左(先頭)のシートを選択
+            if (savedSheet && data.sheets.includes(savedSheet)) {
+              currentSheetName = savedSheet;
+              select.value = savedSheet;
+            } else {
+              currentSheetName = data.sheets[0];
+            }
+
+            updateTitle(currentSheetName);
+            await loadData();
+          }
+        }
+      } catch (err) {
+        console.error('初期化エラー:', err);
+      } finally {
+        hideLoading();
+        startAutoSync(); // 5秒おきの自動同期開始
+      }
+    }
+
+    // シート切り替えイベント
+    async function onSheetChange() {
+      const select = document.getElementById('sheetSelect');
+      currentSheetName = select.value;
+
+      // ★選択したシート名をローカルストレージに保存
+      localStorage.setItem('selectedSheetName', currentSheetName);
+
+      updateTitle(currentSheetName);
+      showLoading();
+      await loadData();
+      hideLoading();
+    }
+
+
+    // ★❹ 5秒ごとの自動同期（他ユーザーの更新を即時反映）
+    function startAutoSync() {
+      if (autoSyncInterval) clearInterval(autoSyncInterval);
+      autoSyncInterval = setInterval(() => {
+        // モーダルが開いておらず、ローディング中でない場合のみ最新データを取得
+        const addModalVisible = document.getElementById('addModal').style.display === 'flex';
+        const editModalVisible = document.getElementById('editModal').style.display === 'flex';
+        
+        if (!isUserOperating && !addModalVisible && !editModalVisible) {
+          loadData(true); // バックグラウンドで更新
+        }
+      }, 5000);
+    }
+
+ // シート切り替えイベント
+    async function onSheetChange() {
+      const select = document.getElementById('sheetSelect');
+      currentSheetName = select.value;
+
+      // ★選択したシート名をローカルストレージに保存
+      localStorage.setItem('selectedSheetName', currentSheetName);
+
+      updateTitle(currentSheetName);
+      showLoading();
+      await loadData();
+      hideLoading();
+    }
+
+
+    function resetField(fieldId) {
+      document.getElementById(fieldId).value = '';
+    }
+
+    /* --- プログラム追加 --- */
+    function openAddModal() {
+      document.getElementById('bulkProgramNames').value = '';
+      document.getElementById('addModal').style.display = 'flex';
+      document.getElementById('bulkProgramNames').focus();
+    }
+
+    function closeAddModal() {
+      document.getElementById('addModal').style.display = 'none';
+    }
+
+    async function saveBulkPrograms() {
+      const text = document.getElementById('bulkProgramNames').value;
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+      if (lines.length === 0) {
+        alert('プログラム名を入力してください。');
+        return;
+      }
+
+      isUserOperating = true;
+      showLoading();
+      try {
+        const res = await fetch(GAS_WEB_APP_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'add_multiple',
+            sheetName: currentSheetName,
+            payload: lines
+          })
+        });
+        if (res.ok) {
+          closeAddModal();
+          await loadData();
+        }
+      } catch (err) {
+        console.error('一括追加エラー:', err);
+      } finally {
+        hideLoading();
+        isUserOperating = false;
+      }
+    }
+
+    /* --- 計測操作 --- */
+    async function recordStart(row) {
+      const nowStr = formatTime(new Date());
+      await saveData({
+        Id: row.ID,
+        EventName: row.プログラム名,
+        StartTime: nowStr,
+        EndTime: '',
+        Duration: '',
+        Note: row.備考 || ''
+      });
+    }
+
+    async function recordStop(row) {
+      const nowStr = formatTime(new Date());
+      const duration = calculateDuration(row.開始時刻, nowStr);
+      await saveData({
+        Id: row.ID,
+        EventName: row.プログラム名,
+        StartTime: row.開始時刻,
+        EndTime: nowStr,
+        Duration: duration,
+        Note: row.備考 || ''
+      });
+    }
+
+    async function moveItem(index, direction) {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= currentList.length) return;
+
+      const temp = currentList[index];
+      currentList[index] = currentList[targetIndex];
+      currentList[targetIndex] = temp;
+
+      isUserOperating = true;
+      showLoading();
+      try {
+        const res = await fetch(GAS_WEB_APP_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'reorder',
+            sheetName: currentSheetName,
+            payload: currentList
+          })
+        });
+        if (res.ok) await loadData();
+      } catch (err) {
+        console.error('順番保存エラー:', err);
+      } finally {
+        hideLoading();
+        isUserOperating = false;
+      }
+    }
+
+    /* --- 手動編集モーダル --- */
+    function openEditModal(row) {
+      document.getElementById('editId').value = row.ID;
+      document.getElementById('editEventName').value = row.プログラム名 || '';
+      document.getElementById('editStartTime').value = row.開始時刻 || '';
+      document.getElementById('editEndTime').value = row.終了時刻 || '';
+      document.getElementById('editNote').value = row.備考 || '';
+
+      document.getElementById('editModal').style.display = 'flex';
+      document.getElementById('editEventName').focus();
+    }
+
+    function closeModal() {
+      document.getElementById('editModal').style.display = 'none';
+    }
+
+    async function saveManualEdit() {
+      const id = document.getElementById('editId').value;
+      const eventName = document.getElementById('editEventName').value.trim();
+      const startTime = document.getElementById('editStartTime').value.trim();
+      const endTime = document.getElementById('editEndTime').value.trim();
+      const note = document.getElementById('editNote').value.trim();
+
+      if (!eventName) {
+        alert('プログラム名を入力してください。');
+        return;
+      }
+
+      const duration = calculateDuration(startTime, endTime);
+
+      closeModal();
+      await saveData({
+        Id: id,
+        EventName: eventName,
+        StartTime: startTime,
+        EndTime: endTime,
+        Duration: duration,
+        Note: note
+      });
+    }
+
+    async function deleteProgram(id) {
+      if (!confirm('このプログラムをリストから削除しますか？')) return;
+      isUserOperating = true;
+      showLoading();
+      try {
+        await fetch(GAS_WEB_APP_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'delete',
+            sheetName: currentSheetName,
+            payload: { Id: id }
+          })
+        });
+        await loadData();
+      } catch (err) {
+        console.error('削除エラー:', err);
+      } finally {
+        hideLoading();
+        isUserOperating = false;
+      }
+    }
+
+    async function saveData(payload) {
+      isUserOperating = true;
+      showLoading();
+      try {
+        const res = await fetch(GAS_WEB_APP_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'save',
+            sheetName: currentSheetName,
+            payload: payload
+          })
+        });
+        if (res.ok) await loadData();
+      } catch (err) {
+        console.error('保存エラー:', err);
+      } finally {
+        hideLoading();
+        isUserOperating = false;
+      }
+    }
+
+    function calculateDuration(startStr, endStr) {
+      if (!startStr || !endStr) return '';
+      const today = new Date().toISOString().split('T')[0];
+      const start = new Date(`${today}T${startStr}`);
+      const end = new Date(`${today}T${endStr}`);
+
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return '';
+
+      const totalSeconds = Math.floor((end - start) / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}分${seconds}秒`;
+    }
+
+    function formatTime(date) {
+      const h = String(date.getHours()).padStart(2, '0');
+      const m = String(date.getMinutes()).padStart(2, '0');
+      const s = String(date.getSeconds()).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    async function loadData(isBackground = false) {
+      try {
+        const res = await fetch(`${GAS_WEB_APP_URL}?action=list&sheetName=${encodeURIComponent(currentSheetName)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const tbody = document.getElementById('programTableBody');
+
+          currentList = Array.isArray(data) ? data : (data ? [data] : []);
+
+          // タイマーのクリア
+          if (timerInterval) clearInterval(timerInterval);
+          tbody.innerHTML = '';
+
+          const anyInProgress = currentList.some(row => row.開始時刻 && !row.終了時刻);
+
+          currentList.forEach((row, index) => {
+            const tr = document.createElement('tr');
+            const hasStart = !!row.開始時刻;
+            const hasEnd = !!row.終了時刻;
+            const isInProgress = hasStart && !hasEnd;
+
+            if (isInProgress) {
+              tr.classList.add('in-progress');
+            }
+
+            const startDisabled = hasStart || anyInProgress;
+            const stopDisabled = !isInProgress;
+
+            tr.innerHTML = `
+              <td style="font-weight: bold; text-align: left;">
+                ${row.プログラム名||''}
+                ${isInProgress ? '<span class="status-badge badge-progress">計測中</span>' : ''}
+              </td>
+              <td>${row.開始時刻||'-'}</td>
+              <td id="endTimeCell_${row.ID}">${row.終了時刻||'-'}</td>
+              <td id="durationCell_${row.ID}" style="font-weight: bold; color: #0078d4;">${row.所要時間||'-'}</td>
+              <td style="text-align: left; font-size: 0.9em; color: #555;">${row.備考||'-'}</td>
+              <td>
+                <button class="btn-start" onclick='recordStart(${JSON.stringify(row)})' ${startDisabled ? 'disabled' : ''}>開始</button>
+                <button class="btn-stop" onclick='recordStop(${JSON.stringify(row)})' ${stopDisabled ? 'disabled' : ''}>終了</button>
+              </td>
+              <td>
+                <button class="btn-move" onclick="moveItem(${index}, -1)" ${index === 0 ? 'disabled' : ''}>↑</button>
+                <button class="btn-move" onclick="moveItem(${index}, 1)" ${index === currentList.length - 1 ? 'disabled' : ''}>↓</button>
+                <button class="btn-edit" onclick='openEditModal(${JSON.stringify(row)})'>編集</button>
+                <button class="btn-del" onclick="deleteProgram('${row.ID}')">削除</button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+
+            if (isInProgress) {
+              const endTimeCell = tr.querySelector(`#endTimeCell_${row.ID}`);
+              const durationCell = tr.querySelector(`#durationCell_${row.ID}`);
+
+              const updateLive = () => {
+                const nowStr = formatTime(new Date());
+                endTimeCell.innerHTML = `<span class="live-time">${nowStr}</span>`;
+                durationCell.innerText = calculateDuration(row.開始時刻, nowStr);
+              };
+
+              updateLive();
+              timerInterval = setInterval(updateLive, 1000);
+            }
+          });
+        }
+      } catch (err) {
+        console.error('データ取得エラー:', err);
+      }
+    }
+
+    // アプリ起動
+    initApp();
+  </script>
+</body>
+</html>
