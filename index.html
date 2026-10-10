@@ -1,0 +1,232 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>校務Webアプリ ポータル</title>
+
+  <style>
+    :root {
+      --primary: #2457a7;
+      --primary-light: #eaf1fb;
+      --text: #253247;
+      --muted: #687589;
+      --background: #f4f6fa;
+      --border: #e0e5ed;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family:
+        "Yu Gothic UI", "Meiryo", sans-serif;
+      color: var(--text);
+      background: var(--background);
+      line-height: 1.7;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 28px 24px;
+    }
+
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      margin: 0 0 4px;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 0.12em;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(23px, 4vw, 32px);
+      font-weight: 700;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 36px 24px 60px;
+    }
+
+    .section-heading {
+      margin: 0 0 18px;
+      font-size: 19px;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+      gap: 20px;
+    }
+
+    .app-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 210px;
+      padding: 24px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      text-decoration: none;
+      color: inherit;
+      transition:
+        border-color 0.2s,
+        box-shadow 0.2s,
+        transform 0.2s;
+    }
+
+    .app-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 8px 24px rgba(30, 60, 100, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .app-card:focus-visible {
+      outline: 3px solid var(--primary);
+      outline-offset: 4px;
+    }
+
+    .app-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 18px;
+      border-radius: 12px;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 25px;
+    }
+
+    .app-name {
+      margin: 0;
+      font-size: 19px;
+      font-weight: bold;
+    }
+
+    .app-description {
+      margin: 8px 0 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .app-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      color: var(--primary);
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .arrow {
+      font-size: 20px;
+    }
+
+    footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      header {
+        padding: 22px 18px;
+      }
+
+      main {
+        padding: 28px 18px 40px;
+      }
+
+      .app-card {
+        min-height: 190px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .app-card {
+        transition: none;
+      }
+
+      .app-card:hover {
+        transform: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="header-inner">
+      <p class="eyebrow">SCHOOL WORKSPACE</p>
+      <h1>校務Webアプリ ポータル</h1>
+      <p class="subtitle">
+        校務で使用するWebアプリをまとめたページです。
+      </p>
+    </div>
+  </header>
+
+  <main>
+    <h2 class="section-heading">アプリ一覧</h2>
+
+    <div class="app-grid">
+
+      <!-- 時間計測アプリ -->
+      <a
+        class="app-card"
+        href="https://mihob369.github.io/WebApp/time-recorder.html"
+      >
+        <div class="app-icon" aria-hidden="true">◷</div>
+
+        <h3 class="app-name">時間計測アプリ</h3>
+
+        <p class="app-description">
+          時間の計測・記録に使用するアプリです。
+        </p>
+
+        <div class="app-link">
+          <span>アプリを開く</span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </div>
+      </a>
+
+      <!--
+        新しいアプリを追加する場合は、
+        app-card を複製してリンクと名称を変更してください。
+      -->
+
+    </div>
+  </main>
+
+  <footer>
+    校務Webアプリ ポータル
+  </footer>
+</body>
+</html>
