@@ -17,14 +17,15 @@
       background-color: #f4f6f9;
     }
     
-    /* 固定ヘッダー領域 */
+    /* ❶ 固定ヘッダー領域（スクロール時に隙間から表が見えないよう位置とシャドウを最適化） */
     .sticky-header {
       background: #ffffff;
-      padding: 12px 15px 10px 15px;
+      padding: 12px 20px 10px 20px;
       border-bottom: 2px solid #0078d4;
       flex-shrink: 0;
       z-index: 10;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      position: relative;
     }
 
     .header-top {
@@ -73,16 +74,17 @@
       font-size: 1.1rem;
     }
 
-    /* テーブル・スクロール領域（★スマホでの最下部見切れ防止のためpadding-bottomを拡張） */
+    /* テーブル・スクロール領域 */
     .table-container {
       flex: 1;
       overflow-y: auto;
-      padding: 10px 15px 40px 15px;
+      padding: 0 20px 40px 20px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-top: 10px;
     }
 
     th, td {
@@ -92,6 +94,13 @@
       background: white;
     }
 
+    /* ❸ PC表示時：プログラム列（1列目）を端から余白を設けた左寄せに設定 */
+    tbody td:first-child {
+      text-align: left;
+      padding-left: 15px;
+    }
+
+    /* 固定表示テーブルヘッダー */
     thead th {
       position: sticky;
       top: 0;
@@ -105,7 +114,8 @@
     .order-num {
       color: #0078d4;
       font-weight: bold;
-      margin-right: 6px;
+      margin-right: 8px;
+      display: inline-block;
     }
 
     /* ボタンデザイン */
@@ -132,7 +142,7 @@
     button:disabled { background: #ccc !important; cursor: not-allowed; opacity: 0.6; }
 
     tr.in-progress { background-color: #e6f4ea; }
-    .status-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold; margin-left: 5px; }
+    .status-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold; margin-left: 8px; }
     .badge-progress { background: #28a745; color: white; }
     .live-time { color: #28a745; font-weight: bold; animation: blink 1s infinite; }
     @keyframes blink { 50% { opacity: 0.6; } }
@@ -176,7 +186,7 @@
       .header-title-bar h3 { font-size: 1rem; }
       .btn-add { font-size: 0.85em; padding: 6px 10px; }
 
-      .table-container { padding: 10px 10px 60px 10px; } /* フッター余白確保 */
+      .table-container { padding: 10px 10px 60px 10px; }
 
       table, thead, tbody, th, td, tr { display: block; }
       thead { display: none; }
@@ -190,7 +200,6 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.04);
       }
 
-      /* ★最下部要素の余白を明示的に確保 */
       tbody tr:last-child {
         margin-bottom: 30px;
       }
@@ -205,12 +214,14 @@
         font-size: 0.95em;
       }
 
-      /* プログラム名行 */
-      tbody td:nth-child(1) {
+      /* ❷ スマホ表示時：プログラム名と番号を左寄せで適度なスペースのみ離して表示 */
+      tbody td:first-child {
         font-size: 1.1rem;
         border-bottom: 1px solid #eee;
         padding-bottom: 8px;
         margin-bottom: 6px;
+        justify-content: flex-start;
+        padding-left: 0;
       }
 
       tbody td:nth-child(2)::before { content: "開始時刻"; font-weight: bold; color: #666; font-size: 0.85em; }
@@ -265,13 +276,13 @@
     <table>
       <thead>
         <tr>
-          <th style="width: 22%;">プログラム</th>
+          <th style="width: 25%;">プログラム</th>
           <th style="width: 11%;">開始時刻</th>
           <th style="width: 11%;">終了時刻</th>
           <th style="width: 11%;">所要時間</th>
-          <th style="width: 17%;">備考</th>
+          <th style="width: 15%;">備考</th>
           <th style="width: 12%;">計測操作</th>
-          <th style="width: 16%;">管理</th>
+          <th style="width: 15%;">管理</th>
         </tr>
       </thead>
       <tbody id="programTableBody"></tbody>
@@ -657,7 +668,6 @@
             const startDisabled = hasStart || anyInProgress;
             const stopDisabled = !isInProgress;
 
-            // ★プログラム名の頭に上からの順番（1., 2., 3.）を付与
             const displayOrder = index + 1;
 
             tr.innerHTML = `
